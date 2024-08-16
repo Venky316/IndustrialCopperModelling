@@ -1,0 +1,281 @@
+import pandas as pd
+import numpy as np
+import re
+import pickle
+import matplotlib.pyplot as plt
+import seaborn as sns
+import xgboost as xgb
+from sklearn.preprocessing import (LabelEncoder,StandardScaler,PolynomialFeatures)
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import (confusion_matrix,classification_report,accuracy_score,precision_score,recall_score,f1_score,roc_curve)
+from sklearn.feature_selection import (SelectKBest,f_classif)
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import (RandomForestClassifier,GradientBoostingClassifier)
+from imblearn.over_sampling import (SMOTE,RandomOverSampler)
+
+---------------------------------------------Exploratory Data Analysis---------------------------------------------
+
+getdf = pd.read_csv('Copper_Set.csv')
+getdf = getdf.iloc[:,[0,1,2,3,4,5,6,7,8,9,11,12,13,10]]
+
+getdf['quantity tons'].replace('e',np.nan,inplace=True)
+
+for i in range(0,(len(getdf.axes[1])-1)):
+    subdf = getdf[getdf.iloc[:,i].isnull()]
+    for j in subdf.index:
+        getdf.drop(j,inplace=True)
+
+for i in getdf['material_ref'].index:
+    if(i == 181635):
+        break
+    else:
+        getval = str(getdf.iloc[i,13])
+        findval = re.findall('^00000+',getval)
+        if(len(findval) > 0):
+            getdf.iloc[i,13] = 'unset'
+
+getdf['item_date'] = getdf['item_date'].astype('int64')
+getdf['quantity tons'] = getdf['quantity tons'].astype('float64')
+getdf['customer'] = getdf['customer'].astype('int64')
+getdf['country'] = getdf['country'].astype('int64')
+getdf['application'] = getdf['application'].astype('int64')
+getdf['thickness'] = getdf['thickness'].astype('int64')
+getdf['width'] = getdf['width'].astype('int64')
+getdf['delivery date'] = getdf['delivery date'].astype('int64')
+getdf['selling_price'] = getdf['selling_price'].astype('int64')
+getdf['material_ref'] = getdf['material_ref'].astype(str)
+getdf.drop(45090,inplace=True)
+getdf.drop(52,inplace=True)
+
+q3 = getdf['quantity tons'].quantile(0.75)
+q1 = getdf['quantity tons'].quantile(0.25)
+iqr = q3 - q1
+minval = int(q1 - (iqr * 1.5))
+maxval = int(q3 + (iqr * 1.5))
+for i in getdf[getdf['quantity tons'] < minval].index:
+    getdf.loc[i,'quantity tons'] = minval
+
+for i in getdf[getdf['quantity tons'] > maxval].index:
+    getdf.loc[i,'quantity tons'] = maxval
+
+q3 = getdf['customer'].quantile(0.75)
+q1 = getdf['customer'].quantile(0.25)
+iqr = q3 - q1
+minval = int(q1 - (iqr * 1.5))
+maxval = int(q3 + (iqr * 1.5))
+
+for i in getdf[getdf['customer'] < minval].index:
+    getdf.loc[i,'customer'] = minval
+
+for i in getdf[getdf['customer'] > maxval].index:
+    getdf.loc[i,'customer'] = maxval
+
+q3 = getdf['application'].quantile(0.75)
+q1 = getdf['application'].quantile(0.25)
+iqr = q3 - q1
+minval = int(q1 - (iqr * 1.5))
+maxval = int(q3 + (iqr * 1.5))
+
+for i in getdf[getdf['application'] < minval].index:
+    getdf.loc[i,'application'] = minval
+
+for i in getdf[getdf['application'] > maxval].index:
+    getdf.loc[i,'application'] = maxval
+
+q3 = getdf['thickness'].quantile(0.75)
+q1 = getdf['thickness'].quantile(0.25)
+iqr = q3 - q1
+minval = int(q1 - (iqr * 1.5))
+maxval = int(q3 + (iqr * 1.5))
+
+for i in getdf[getdf['thickness'] < minval].index:
+    getdf.loc[i,'thickness'] = minval
+
+for i in getdf[getdf['thickness'] > maxval].index:
+    getdf.loc[i,'thickness'] = maxval
+
+q3 = getdf['width'].quantile(0.75)
+q1 = getdf['width'].quantile(0.25)
+iqr = q3 - q1
+minval = int(q1 - (iqr * 1.5))
+maxval = int(q3 + (iqr * 1.5))
+
+for i in getdf[getdf['width'] < minval].index:
+    getdf.loc[i,'width'] = minval
+
+for i in getdf[getdf['width'] > maxval].index:
+    getdf.loc[i,'width'] = maxval
+
+q3 = getdf['delivery date'].quantile(0.75)
+q1 = getdf['delivery date'].quantile(0.25)
+iqr = q3 - q1
+minval = int(q1 - (iqr * 1.5))
+maxval = int(q3 + (iqr * 1.5))
+
+for i in getdf[getdf['delivery date'] < minval].index:
+    getdf.loc[i,'delivery date'] = minval
+
+for i in getdf[getdf['delivery date'] > maxval].index:
+    getdf.loc[i,'delivery date'] = maxval
+
+q3 = getdf['selling_price'].quantile(0.75)
+q1 = getdf['selling_price'].quantile(0.25)
+iqr = q3 - q1
+minval = int(q1 - (iqr * 1.5))
+maxval = int(q3 + (iqr * 1.5))
+
+for i in getdf[getdf['selling_price'] < minval].index:
+    getdf.loc[i,'selling_price'] = minval
+
+for i in getdf[getdf['selling_price'] > maxval].index:
+    getdf.loc[i,'selling_price'] = maxval
+
+copydf = getdf.copy()
+copydf.drop('id',axis=1,inplace=True)
+
+---------------------------------------------Label Encoding---------------------------------------------
+
+getlabel = LabelEncoder()
+copydf['item type'] = getlabel.fit_transform(copydf['item type'])
+copydf['material_ref'] = getlabel.fit_transform(copydf['material_ref'])
+copydf = copydf[(copydf.status == 'Won') | (copydf.status == 'Lost')]
+
+---------------------------------------------Exploratory Data Analysis---------------------------------------------
+
+for i in copydf[copydf['item type'] <= 1].index:
+    copydf.drop(i,inplace=True)
+
+q3 = copydf['selling_price'].quantile(0.75)
+q1 = copydf['selling_price'].quantile(0.25)
+iqr = q3 - q1
+minval = int(q1 - (iqr * 1.5))
+maxval = int(q3 + (iqr * 1.5))
+
+for i in copydf[copydf['selling_price'] < minval].index:
+    copydf.loc[i,'selling_price'] = minval
+
+for i in copydf[copydf['selling_price'] > maxval].index:
+    copydf.loc[i,'selling_price'] = maxval
+
+q3 = copydf['quantity tons'].quantile(0.75)
+q1 = copydf['quantity tons'].quantile(0.25)
+iqr = q3 - q1
+minval = int(q1 - (iqr * 1.5))
+maxval = int(q3 + (iqr * 1.5))
+for i in copydf[copydf['quantity tons'] < minval].index:
+    copydf.loc[i,'quantity tons'] = minval
+
+for i in copydf[copydf['quantity tons'] > maxval].index:
+    copydf.loc[i,'quantity tons'] = maxval
+
+q3 = copydf['customer'].quantile(0.75)
+q1 = copydf['customer'].quantile(0.25)
+iqr = q3 - q1
+minval = int(q1 - (iqr * 1.5))
+maxval = int(q3 + (iqr * 1.5))
+
+for i in copydf[copydf['customer'] < minval].index:
+    copydf.loc[i,'customer'] = minval
+
+for i in copydf[copydf['customer'] > maxval].index:
+    copydf.loc[i,'customer'] = maxval
+
+q3 = copydf['selling_price'].quantile(0.75)
+q1 = copydf['selling_price'].quantile(0.25)
+iqr = q3 - q1
+minval = int(q1 - (iqr * 1.5))
+maxval = int(q3 + (iqr * 1.5))
+
+for i in copydf[copydf['selling_price'] <= minval].index:
+    copydf.drop(i,inplace=True)
+
+statusdf = copydf[['status']]
+statusdf.reset_index(inplace=True)
+
+copydf.columns = ['item_date', 'quantity tons', 'customer', 'country', 'item type', 'application', 'thickness', 'width', 'product_ref', 'delivery date', 'selling_price', 'material_ref', 'status']
+copydf.drop(['item type','status'],axis=1,inplace=True)
+
+---------------------------------------------Scaling Values using Standard Scaler---------------------------------------------
+
+scaler = StandardScaler()
+copydf = pd.DataFrame(scaler.fit_transform(copydf))
+copydf.columns = ['item_date', 'quantity tons', 'customer', 'country', 'application', 'thickness', 'width', 'product_ref', 'delivery date', 'selling_price', 'material_ref']
+
+statusdf.drop('index',axis=1,inplace=True)
+copydf = pd.concat([copydf,statusdf],axis=1)
+copydf['status'].replace('Won','1',inplace=True)
+copydf['status'].replace('Lost','0',inplace=True)
+copydf['status'] = copydf['status'].astype('int64')
+
+---------------------------------------------Feature Selection---------------------------------------------
+
+array = copydf.values
+X = array[:,:11]
+Y = array[:,11]
+
+selector = SelectKBest(score_func=f_classif,k=5)
+selector.fit_transform(X,Y)
+
+X = copydf.loc[:,['country','application','thickness','delivery date','width']]
+Y = copydf['status']
+
+---------------------------------------------Over Sampling to handle Class Imbalance---------------------------------------------
+
+oversample = SMOTE()
+X,Y = oversample.fit_resample(X,Y)
+
+---------------------------------------------Testing on Various Models---------------------------------------------
+------------- KNN Classifier
+
+X_train,X_test,Y_train,Y_test = train_test_split(X,Y,test_size=0.2)
+classifier = KNeighborsClassifier(n_neighbors = 25)
+classifier.fit(X_train,Y_train)
+Y_pred = classifier.predict(X_test)
+getresult = classification_report(Y_test,Y_pred)
+
+------------- Logistic Regression
+
+X_train,X_test,Y_train,Y_test = train_test_split(X,Y,test_size=0.2)
+classifier = LogisticRegression()
+classifier.fit(X_train,Y_train)
+Y_pred = classifier.predict(X_test)
+getresult = classification_report(Y_test,Y_pred)
+
+------------- Decision Tree Classifier
+
+X_train,X_test,Y_train,Y_test = train_test_split(X,Y,test_size=0.2)
+classifier = DecisionTreeClassifier()
+classifier.fit(X_train,Y_train)
+Y_pred = classifier.predict(X_test)
+getresult = classification_report(Y_test,Y_pred)
+
+------------- Random Forest Classifier
+
+X_train,X_test,Y_train,Y_test = train_test_split(X,Y,test_size=0.2)
+classifier = RandomForestClassifier(n_estimators=150)
+classifier.fit(X_train,Y_train)
+Y_pred = classifier.predict(X_test)
+getresult = classification_report(Y_test,Y_pred)
+
+------------- Gradient Boosting Classifier
+
+X_train,X_test,Y_train,Y_test = train_test_split(X,Y,test_size=0.2)
+classifier = GradientBoostingClassifier(learning_rate=0.8)
+classifier.fit(X_train,Y_train)
+Y_pred = classifier.predict(X_test)
+getresult = classification_report(Y_test,Y_pred)
+
+------------- Extreme Gradient Boosting Classifier
+
+X_train,X_test,Y_train,Y_test = train_test_split(X,Y,test_size=0.2)
+classifier = xgb.XGBClassifier()
+classifier.fit(X_train,Y_train)
+Y_pred = classifier.predict(X_test)
+getresult = classification_report(Y_test,Y_pred)
+
+
+*****************************************************************************************************************************************************************
+
+Selected Classifier : Random Forest Classifier (accuracy_score : 0.81, precision_score : 0.81, recall_score : 0.81, f1_score : 0.81)

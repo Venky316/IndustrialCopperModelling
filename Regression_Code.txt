@@ -1,0 +1,267 @@
+import pandas as pd
+import numpy as np
+import re
+import pickle
+import matplotlib.pyplot as plt
+import seaborn as sns
+import xgboost as xgb
+from sklearn.preprocessing import (LabelEncoder,StandardScaler,PolynomialFeatures)
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import (mean_squared_error,mean_absolute_error,r2_score,root_mean_squared_error)
+from sklearn.feature_selection import (SelectKBest,f_classif)
+from sklearn.linear_model import(LinearRegression,LogisticRegression)
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.ensemble import (RandomForestRegressor,GradientBoostingRegressor)
+
+#---------------------------------------------Exploratory Data Analysis---------------------------------------------
+
+getdf = pd.read_csv('Copper_Set.csv')
+getdf = getdf.iloc[:,[0,1,2,3,4,5,6,7,8,9,11,12,13,10]]
+
+getdf['quantity tons'].replace('e',np.nan,inplace=True)
+
+for i in range(0,(len(getdf.axes[1])-1)):
+    subdf = getdf[getdf.iloc[:,i].isnull()]
+    for j in subdf.index:
+        getdf.drop(j,inplace=True)
+
+for i in getdf['material_ref'].index:
+    if(i == 181635):
+        break
+    else:
+        getval = str(getdf.iloc[i,13])
+        findval = re.findall('^00000+',getval)
+        if(len(findval) > 0):
+            getdf.iloc[i,13] = 'unset'
+
+getdf['item_date'] = getdf['item_date'].astype('int64')
+getdf['quantity tons'] = getdf['quantity tons'].astype('float64')
+getdf['customer'] = getdf['customer'].astype('int64')
+getdf['country'] = getdf['country'].astype('int64')
+getdf['application'] = getdf['application'].astype('int64')
+getdf['thickness'] = getdf['thickness'].astype('int64')
+getdf['width'] = getdf['width'].astype('int64')
+getdf['delivery date'] = getdf['delivery date'].astype('int64')
+getdf['selling_price'] = getdf['selling_price'].astype('int64')
+getdf['material_ref'] = getdf['material_ref'].astype(str)
+getdf.drop(45090,inplace=True)
+getdf.drop(52,inplace=True)
+
+q3 = getdf['quantity tons'].quantile(0.75)
+q1 = getdf['quantity tons'].quantile(0.25)
+iqr = q3 - q1
+minval = int(q1 - (iqr * 1.5))
+maxval = int(q3 + (iqr * 1.5))
+for i in getdf[getdf['quantity tons'] < minval].index:
+    getdf.loc[i,'quantity tons'] = minval
+
+for i in getdf[getdf['quantity tons'] > maxval].index:
+    getdf.loc[i,'quantity tons'] = maxval
+
+q3 = getdf['customer'].quantile(0.75)
+q1 = getdf['customer'].quantile(0.25)
+iqr = q3 - q1
+minval = int(q1 - (iqr * 1.5))
+maxval = int(q3 + (iqr * 1.5))
+
+for i in getdf[getdf['customer'] < minval].index:
+    getdf.loc[i,'customer'] = minval
+
+for i in getdf[getdf['customer'] > maxval].index:
+    getdf.loc[i,'customer'] = maxval
+
+q3 = getdf['application'].quantile(0.75)
+q1 = getdf['application'].quantile(0.25)
+iqr = q3 - q1
+minval = int(q1 - (iqr * 1.5))
+maxval = int(q3 + (iqr * 1.5))
+
+for i in getdf[getdf['application'] < minval].index:
+    getdf.loc[i,'application'] = minval
+
+for i in getdf[getdf['application'] > maxval].index:
+    getdf.loc[i,'application'] = maxval
+
+q3 = getdf['thickness'].quantile(0.75)
+q1 = getdf['thickness'].quantile(0.25)
+iqr = q3 - q1
+minval = int(q1 - (iqr * 1.5))
+maxval = int(q3 + (iqr * 1.5))
+
+for i in getdf[getdf['thickness'] < minval].index:
+    getdf.loc[i,'thickness'] = minval
+
+for i in getdf[getdf['thickness'] > maxval].index:
+    getdf.loc[i,'thickness'] = maxval
+
+q3 = getdf['width'].quantile(0.75)
+q1 = getdf['width'].quantile(0.25)
+iqr = q3 - q1
+minval = int(q1 - (iqr * 1.5))
+maxval = int(q3 + (iqr * 1.5))
+
+for i in getdf[getdf['width'] < minval].index:
+    getdf.loc[i,'width'] = minval
+
+for i in getdf[getdf['width'] > maxval].index:
+    getdf.loc[i,'width'] = maxval
+
+q3 = getdf['delivery date'].quantile(0.75)
+q1 = getdf['delivery date'].quantile(0.25)
+iqr = q3 - q1
+minval = int(q1 - (iqr * 1.5))
+maxval = int(q3 + (iqr * 1.5))
+
+for i in getdf[getdf['delivery date'] < minval].index:
+    getdf.loc[i,'delivery date'] = minval
+
+for i in getdf[getdf['delivery date'] > maxval].index:
+    getdf.loc[i,'delivery date'] = maxval
+
+q3 = getdf['selling_price'].quantile(0.75)
+q1 = getdf['selling_price'].quantile(0.25)
+iqr = q3 - q1
+minval = int(q1 - (iqr * 1.5))
+maxval = int(q3 + (iqr * 1.5))
+
+for i in getdf[getdf['selling_price'] < minval].index:
+    getdf.loc[i,'selling_price'] = minval
+
+for i in getdf[getdf['selling_price'] > maxval].index:
+    getdf.loc[i,'selling_price'] = maxval
+
+copydf = getdf.copy()
+copydf.drop('id',axis=1,inplace=True)
+
+#---------------------------------------------Label Encoding---------------------------------------------
+
+getlabel = LabelEncoder()
+copydf['status'] = getlabel.fit_transform(copydf['status'])
+copydf['item type'] = getlabel.fit_transform(copydf['item type'])
+copydf['material_ref'] = getlabel.fit_transform(copydf['material_ref'])
+
+copydf = copydf.iloc[:,[0,1,2,3,4,5,6,7,8,9,10,12,11]]
+
+for i in copydf[copydf['item type'] < 2].index:
+    copydf.drop(i,inplace=True)
+
+q3 = copydf['quantity tons'].quantile(0.75)
+q1 = copydf['quantity tons'].quantile(0.25)
+iqr = q3 - q1
+
+minval = q1 - (1.5 * iqr)
+maxval = q3 + (1.5 * iqr)
+
+for i in copydf[copydf['quantity tons'] < minval].index:
+    copydf.loc[i,'quantity tons'] = minval
+
+for i in copydf[copydf['quantity tons'] > maxval].index:
+    copydf.loc[i,'quantity tons'] = maxval
+
+#---------------------------------------------Feature Selection---------------------------------------------
+
+copydf.drop(['quantity tons','customer','country','item type','product_ref','material_ref','status','application','width'],axis=1,inplace=True)
+
+for i in copydf[copydf['selling_price'] < 400].index:
+    copydf.drop(i,inplace=True)
+
+for i in copydf[copydf['selling_price'] > 1365].index:
+    copydf.drop(i,inplace=True)
+
+copydf.drop([105485,36532,43189,12343,154521,105421,3231,2515,2523,3233,3229,58],inplace=True)
+
+copydf.columns= ['item_date', 'thickness', 'delivery date', 'selling_price']
+
+X = copydf.iloc[:,:3]
+Y = copydf['selling_price']
+
+---------------------------------------------Scaling Values using Standard Scaler---------------------------------------------
+
+scaler = StandardScaler()
+testdf = pd.DataFrame(scaler.fit_transform(copydf))
+
+testdf.columns= ['item_date', 'thickness', 'delivery date', 'selling_price']
+
+X = copydf.iloc[:,:3]
+Y = copydf['selling_price']
+
+#---------------------------------------------Testing on Various Models---------------------------------------------
+#------------- Multiple Linear Regression
+
+X_train,X_test,Y_train,Y_test = train_test_split(X,Y,test_size=0.2)
+getmodel = LinearRegression().fit(X_train,Y_train)
+Y_pred = getmodel.predict(X_test)
+print('Mean Squared Error : ', mean_squared_error(Y_test,Y_pred))
+print('Mean Absolute Error : ',mean_absolute_error(Y_test,Y_pred))
+print('Root Mean Square Error : ',root_mean_squared_error(Y_test,Y_pred))
+print('R Square Error : ',r2_score(Y_test,Y_pred))
+
+#------------- Polynomial Regression
+
+X_train,X_test,Y_train,Y_test = train_test_split(X,Y,test_size=0.2)
+poly_model = PolynomialFeatures(degree=2)
+X_poly_train = poly_model.fit_transform(X_train)
+X_poly_test = poly_model.fit_transform(X_test)
+poly_model.fit(X_poly_train,Y_train)
+
+getmodel = LinearRegression().fit(X_poly_train,Y_train)
+Y_pred = getmodel.predict(X_poly_test)
+print('Mean Squared Error : ', mean_squared_error(Y_test,Y_pred))
+print('Mean Absolute Error : ',mean_absolute_error(Y_test,Y_pred))
+print('Root Mean Square Error : ',root_mean_squared_error(Y_test,Y_pred))
+print('R Square Error : ',r2_score(Y_test,Y_pred))
+
+#------------- KNN Regression
+
+X_train,X_test,Y_train,Y_test = train_test_split(X,Y,test_size=0.2)
+getmodel = KNeighborsRegressor(n_neighbors=50).fit(X_train,Y_train)
+Y_pred = getmodel.predict(X_test)
+print('Mean Squared Error : ', mean_squared_error(Y_test,Y_pred))
+print('Mean Absolute Error : ',mean_absolute_error(Y_test,Y_pred))
+print('Root Mean Square Error : ',root_mean_squared_error(Y_test,Y_pred))
+print('R Square Error : ',r2_score(Y_test,Y_pred))
+
+#------------- Decision Tree Regression
+
+X_train,X_test,Y_train,Y_test = train_test_split(X,Y,test_size=0.2)
+getmodel = DecisionTreeRegressor().fit(X_train,Y_train)
+Y_pred = getmodel.predict(X_test)
+print('Mean Squared Error : ', mean_squared_error(Y_test,Y_pred))
+print('Mean Absolute Error : ',mean_absolute_error(Y_test,Y_pred))
+print('Root Mean Square Error : ',root_mean_squared_error(Y_test,Y_pred))
+print('R Square Error : ',r2_score(Y_test,Y_pred))
+
+#------------- Random Forest Regression
+
+X_train,X_test,Y_train,Y_test = train_test_split(X,Y,test_size=0.2)
+getmodel = RandomForestRegressor().fit(X_train,Y_train)
+Y_pred = getmodel.predict(X_test)
+print('Mean Squared Error : ', mean_squared_error(Y_test,Y_pred))
+print('Mean Absolute Error : ',mean_absolute_error(Y_test,Y_pred))
+print('Root Mean Square Error : ',root_mean_squared_error(Y_test,Y_pred))
+print('R Square Error : ',r2_score(Y_test,Y_pred))
+
+#------------- Gradient Boosting Regression
+
+X_train,X_test,Y_train,Y_test = train_test_split(X,Y,test_size=0.2)
+getmodel = GradientBoostingRegressor(learning_rate=0.8).fit(X_train,Y_train)
+Y_pred = getmodel.predict(X_test)
+print('Mean Squared Error : ', mean_squared_error(Y_test,Y_pred))
+print('Mean Absolute Error : ',mean_absolute_error(Y_test,Y_pred))
+print('Root Mean Square Error : ',root_mean_squared_error(Y_test,Y_pred))
+print('R Square Error : ',r2_score(Y_test,Y_pred))
+
+#------------- Extreme Gradient Boosting Regression
+
+X_train,X_test,Y_train,Y_test = train_test_split(X,Y,test_size=0.2)
+getmodel = xgb.XGBRFRegressor().fit(X_train,Y_train)
+Y_pred = getmodel.predict(X_test)
+print('Mean Squared Error : ', mean_squared_error(Y_test,Y_pred))
+print('Mean Absolute Error : ',mean_absolute_error(Y_test,Y_pred))
+print('Root Mean Square Error : ',root_mean_squared_error(Y_test,Y_pred))
+print('R Square Error : ',r2_score(Y_test,Y_pred))
+
+*****************************************************************************************************************************************************************
+
+Selected Regressor : Random Forest Regressor (MSE : 9298.31, MAE : 70.18, RMSE : 96.43, R-square Error : 0.74)
