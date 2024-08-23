@@ -1,3 +1,17 @@
+###############################################################################################################################
+##
+## This contains the Python code to create a trained classification machine learning model for predicting the product price of the Dataset
+## Developer : Venkatesh Shankar
+## Developed Date : 16th August 2024
+## Developed Time : 12.10 P.M (IST)
+## The contents of the program are subjected to copyrights.
+##
+###############################################################################################################################
+##
+## Step 1: Import pre-requisite modules
+##
+###############################################################################################################################
+
 import pandas as pd
 import numpy as np
 import re
@@ -15,7 +29,11 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import (RandomForestClassifier,GradientBoostingClassifier)
 from imblearn.over_sampling import (SMOTE,RandomOverSampler)
 
----------------------------------------------Exploratory Data Analysis---------------------------------------------
+###############################################################################################################################
+##
+## Step 2: Perform Exploratory Data Analysis (EDA) on the data to identify and treat outliers
+##
+###############################################################################################################################
 
 getdf = pd.read_csv('Copper_Set.csv')
 getdf = getdf.iloc[:,[0,1,2,3,4,5,6,7,8,9,11,12,13,10]]
@@ -135,14 +153,22 @@ for i in getdf[getdf['selling_price'] > maxval].index:
 copydf = getdf.copy()
 copydf.drop('id',axis=1,inplace=True)
 
----------------------------------------------Label Encoding---------------------------------------------
+###############################################################################################################################
+##
+## Step 3: Encoding the Categorical columns with numbers using Label Encoding
+##
+###############################################################################################################################
 
 getlabel = LabelEncoder()
 copydf['item type'] = getlabel.fit_transform(copydf['item type'])
 copydf['material_ref'] = getlabel.fit_transform(copydf['material_ref'])
 copydf = copydf[(copydf.status == 'Won') | (copydf.status == 'Lost')]
 
----------------------------------------------Exploratory Data Analysis---------------------------------------------
+###############################################################################################################################
+##
+## Step 4: Perform Exploratory Data Analysis (EDA) on the data to identify and treat outliers
+##
+###############################################################################################################################
 
 for i in copydf[copydf['item type'] <= 1].index:
     copydf.drop(i,inplace=True)
@@ -197,7 +223,11 @@ statusdf.reset_index(inplace=True)
 copydf.columns = ['item_date', 'quantity tons', 'customer', 'country', 'item type', 'application', 'thickness', 'width', 'product_ref', 'delivery date', 'selling_price', 'material_ref', 'status']
 copydf.drop(['item type','status'],axis=1,inplace=True)
 
----------------------------------------------Scaling Values using Standard Scaler---------------------------------------------
+###############################################################################################################################
+##
+## Step 5: Scaling Values using Standard Scaler
+##
+###############################################################################################################################
 
 scaler = StandardScaler()
 copydf = pd.DataFrame(scaler.fit_transform(copydf))
@@ -209,7 +239,13 @@ copydf['status'].replace('Won','1',inplace=True)
 copydf['status'].replace('Lost','0',inplace=True)
 copydf['status'] = copydf['status'].astype('int64')
 
----------------------------------------------Feature Selection---------------------------------------------
+###############################################################################################################################
+##
+## Step 6: Select the best features for the Model using Anova Table
+##
+## 	   Selected Features : country(1390.65), application(6856.12), thickness(4935.725), width(4958.196), delivery date(2395.975)
+##
+###############################################################################################################################
 
 array = copydf.values
 X = array[:,:11]
@@ -221,61 +257,127 @@ selector.fit_transform(X,Y)
 X = copydf.loc[:,['country','application','thickness','delivery date','width']]
 Y = copydf['status']
 
----------------------------------------------Over Sampling to handle Class Imbalance---------------------------------------------
+###############################################################################################################################
+##
+## Step 7: Handling Class imbalance to oversample the dataset using SMOTE
+##
+###############################################################################################################################
 
 oversample = SMOTE()
 X,Y = oversample.fit_resample(X,Y)
 
----------------------------------------------Testing on Various Models---------------------------------------------
-------------- KNN Classifier
+###############################################################################################################################
+##
+## Step 8: Testing on Various ML Models
+##
+###############################################################################################################################
+
+#########################------------- KNN Classifier
 
 X_train,X_test,Y_train,Y_test = train_test_split(X,Y,test_size=0.2)
 classifier = KNeighborsClassifier(n_neighbors = 25)
 classifier.fit(X_train,Y_train)
 Y_pred = classifier.predict(X_test)
-getresult = classification_report(Y_test,Y_pred)
+print('Accuracy : ',accuracy_score(Y_test,Y_pred))
+print('Recall : ',recall_score(Y_test,Y_pred))
+print('Precision : ',precision_score(Y_test,Y_pred))
+print('F1 Score : ',f1_score(Y_test,Y_pred))
 
-------------- Logistic Regression
+# Results - (Accuracy : 0.79, Recall : 0.79, Precision : 0.79, F1 Score : 0.79)
+
+#########################------------- Logistic Regression
 
 X_train,X_test,Y_train,Y_test = train_test_split(X,Y,test_size=0.2)
 classifier = LogisticRegression()
 classifier.fit(X_train,Y_train)
 Y_pred = classifier.predict(X_test)
-getresult = classification_report(Y_test,Y_pred)
+print('Accuracy : ',accuracy_score(Y_test,Y_pred))
+print('Recall : ',recall_score(Y_test,Y_pred))
+print('Precision : ',precision_score(Y_test,Y_pred))
+print('F1 Score : ',f1_score(Y_test,Y_pred))
 
-------------- Decision Tree Classifier
+# Results - (Accuracy : 0.682, Recall : 0.683, Precision : 0.682, F1 Score : 0.679)
+
+#########################------------- Decision Tree Classifier
 
 X_train,X_test,Y_train,Y_test = train_test_split(X,Y,test_size=0.2)
 classifier = DecisionTreeClassifier()
 classifier.fit(X_train,Y_train)
 Y_pred = classifier.predict(X_test)
-getresult = classification_report(Y_test,Y_pred)
+print('Accuracy : ',accuracy_score(Y_test,Y_pred))
+print('Recall : ',recall_score(Y_test,Y_pred))
+print('Precision : ',precision_score(Y_test,Y_pred))
+print('F1 Score : ',f1_score(Y_test,Y_pred))
 
-------------- Random Forest Classifier
+# Results - (Accuracy : 0.81, Recall : 0.779, Precision : 0.832, F1 Score : 0.8)
+
+#########################------------- Random Forest Classifier
 
 X_train,X_test,Y_train,Y_test = train_test_split(X,Y,test_size=0.2)
 classifier = RandomForestClassifier(n_estimators=150)
 classifier.fit(X_train,Y_train)
 Y_pred = classifier.predict(X_test)
-getresult = classification_report(Y_test,Y_pred)
+print('Accuracy : ',accuracy_score(Y_test,Y_pred))
+print('Recall : ',recall_score(Y_test,Y_pred))
+print('Precision : ',precision_score(Y_test,Y_pred))
+print('F1 Score : ',f1_score(Y_test,Y_pred))
 
-------------- Gradient Boosting Classifier
+# Results - (Accuracy : 0.81, Recall : 0.81, Precision : 0.81, F1 Score : 0.81)
+
+#########################------------- Gradient Boosting Classifier
 
 X_train,X_test,Y_train,Y_test = train_test_split(X,Y,test_size=0.2)
 classifier = GradientBoostingClassifier(learning_rate=0.8)
 classifier.fit(X_train,Y_train)
 Y_pred = classifier.predict(X_test)
-getresult = classification_report(Y_test,Y_pred)
+print('Accuracy : ',accuracy_score(Y_test,Y_pred))
+print('Recall : ',recall_score(Y_test,Y_pred))
+print('Precision : ',precision_score(Y_test,Y_pred))
+print('F1 Score : ',f1_score(Y_test,Y_pred))
 
-------------- Extreme Gradient Boosting Classifier
+# Results - (Accuracy : 0.785, Recall : 0.772, Precision : 0.792, F1 Score : 0.782)
+
+#########################------------- Extreme Gradient Boosting Classifier
 
 X_train,X_test,Y_train,Y_test = train_test_split(X,Y,test_size=0.2)
 classifier = xgb.XGBClassifier()
 classifier.fit(X_train,Y_train)
 Y_pred = classifier.predict(X_test)
-getresult = classification_report(Y_test,Y_pred)
+print('Accuracy : ',accuracy_score(Y_test,Y_pred))
+print('Recall : ',recall_score(Y_test,Y_pred))
+print('Precision : ',precision_score(Y_test,Y_pred))
+print('F1 Score : ',f1_score(Y_test,Y_pred))
 
+# Results - (Accuracy : 0.798, Recall : 0.765, Precision : 0.818, F1 Score : 0.791)
+
+######################### Selected Classifier : Random Forest Classifier (accuracy_score : 0.81, precision_score : 0.81, recall_score : 0.81, f1_score : 0.81)
+
+###############################################################################################################################
+##
+## Step 9: Inverse Transforming to scale the values to original values
+##
+###############################################################################################################################
+
+testdf = copydf.copy()
+testdf.drop('status',axis=1,inplace=True)
+
+copydf = pd.DataFrame(scaler.inverse_transform(testdf))
+copydf.columns = ['item_date', 'quantity tons', 'customer', 'country', 'application', 'thickness', 'width', 'product_ref', 'delivery date', 'selling_price', 'material_ref']
+
+###############################################################################################################################
+##
+## Step 10: Dumping the trained model into a binary file using Pickling
+##
+###############################################################################################################################
+
+X = copydf.iloc[:,:3]
+Y = copydf['selling_price')
+
+X_train,X_test,Y_train,Y_test = train_test_split(X,Y,test_size=0.2)
+classifier = RandomForestClassifier(n_estimators=150)
+classifier.fit(X_train,Y_train)
+
+with open('trained_model_class','wb') as f:
+	pickle.dump(classifier,f)
 
 *****************************************************************************************************************************************************************
-
-Selected Classifier : Random Forest Classifier (accuracy_score : 0.81, precision_score : 0.81, recall_score : 0.81, f1_score : 0.81)

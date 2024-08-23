@@ -1,3 +1,17 @@
+###############################################################################################################################
+##
+## This contains the Python code to create a trained regression machine learning model for predicting the product price of the Dataset
+## Developer : Venkatesh Shankar
+## Developed Date : 16th August 2024
+## Developed Time : 12.10 P.M (IST)
+## The contents of the program are subjected to copyrights.
+##
+###############################################################################################################################
+##
+## Step 1: Import pre-requisite modules
+##
+###############################################################################################################################
+
 import pandas as pd
 import numpy as np
 import re
@@ -8,13 +22,16 @@ import xgboost as xgb
 from sklearn.preprocessing import (LabelEncoder,StandardScaler,PolynomialFeatures)
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import (mean_squared_error,mean_absolute_error,r2_score,root_mean_squared_error)
-from sklearn.feature_selection import (SelectKBest,f_classif)
 from sklearn.linear_model import(LinearRegression,LogisticRegression)
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import (RandomForestRegressor,GradientBoostingRegressor)
 
-#---------------------------------------------Exploratory Data Analysis---------------------------------------------
+###############################################################################################################################
+##
+## Step 2: Perform Exploratory Data Analysis (EDA) on the data to identify and treat outliers
+##
+###############################################################################################################################
 
 getdf = pd.read_csv('Copper_Set.csv')
 getdf = getdf.iloc[:,[0,1,2,3,4,5,6,7,8,9,11,12,13,10]]
@@ -134,12 +151,22 @@ for i in getdf[getdf['selling_price'] > maxval].index:
 copydf = getdf.copy()
 copydf.drop('id',axis=1,inplace=True)
 
-#---------------------------------------------Label Encoding---------------------------------------------
+###############################################################################################################################
+##
+## Step 3: Encoding the Categorical columns with numbers using Label Encoding
+##
+###############################################################################################################################
 
 getlabel = LabelEncoder()
 copydf['status'] = getlabel.fit_transform(copydf['status'])
 copydf['item type'] = getlabel.fit_transform(copydf['item type'])
 copydf['material_ref'] = getlabel.fit_transform(copydf['material_ref'])
+
+###############################################################################################################################
+##
+## Step 4: Perform Exploratory Data Analysis (EDA) on the data to identify and treat outliers
+##
+###############################################################################################################################
 
 copydf = copydf.iloc[:,[0,1,2,3,4,5,6,7,8,9,10,12,11]]
 
@@ -159,9 +186,21 @@ for i in copydf[copydf['quantity tons'] < minval].index:
 for i in copydf[copydf['quantity tons'] > maxval].index:
     copydf.loc[i,'quantity tons'] = maxval
 
-#---------------------------------------------Feature Selection---------------------------------------------
+###############################################################################################################################
+##
+## Step 5: Select the best features for the Model using correlation coefficients and removing other columns
+##
+## 	   Selected Features : item_date(52.6%), thickness(35.9%), delivery date(43.4%)
+##
+###############################################################################################################################
 
 copydf.drop(['quantity tons','customer','country','item type','product_ref','material_ref','status','application','width'],axis=1,inplace=True)
+
+###############################################################################################################################
+##
+## Step 6: Perform Exploratory Data Analysis (EDA) on the data to identify and treat outliers
+##
+###############################################################################################################################
 
 for i in copydf[copydf['selling_price'] < 400].index:
     copydf.drop(i,inplace=True)
@@ -176,7 +215,11 @@ copydf.columns= ['item_date', 'thickness', 'delivery date', 'selling_price']
 X = copydf.iloc[:,:3]
 Y = copydf['selling_price']
 
----------------------------------------------Scaling Values using Standard Scaler---------------------------------------------
+###############################################################################################################################
+##
+## Step 7: Scaling Values using Standard Scaler
+##
+###############################################################################################################################
 
 scaler = StandardScaler()
 testdf = pd.DataFrame(scaler.fit_transform(copydf))
@@ -186,8 +229,13 @@ testdf.columns= ['item_date', 'thickness', 'delivery date', 'selling_price']
 X = copydf.iloc[:,:3]
 Y = copydf['selling_price']
 
-#---------------------------------------------Testing on Various Models---------------------------------------------
-#------------- Multiple Linear Regression
+###############################################################################################################################
+##
+## Step 8: Testing on Various ML Models
+##
+###############################################################################################################################
+
+#########################------------- Multiple Linear Regression
 
 X_train,X_test,Y_train,Y_test = train_test_split(X,Y,test_size=0.2)
 getmodel = LinearRegression().fit(X_train,Y_train)
@@ -197,7 +245,9 @@ print('Mean Absolute Error : ',mean_absolute_error(Y_test,Y_pred))
 print('Root Mean Square Error : ',root_mean_squared_error(Y_test,Y_pred))
 print('R Square Error : ',r2_score(Y_test,Y_pred))
 
-#------------- Polynomial Regression
+# Results - (MSE : 0.4485, MAE : 0.5295, RMSE : 0.6697, R-square Error : 0.5542)
+
+#########################------------- Polynomial Regression
 
 X_train,X_test,Y_train,Y_test = train_test_split(X,Y,test_size=0.2)
 poly_model = PolynomialFeatures(degree=2)
@@ -212,7 +262,9 @@ print('Mean Absolute Error : ',mean_absolute_error(Y_test,Y_pred))
 print('Root Mean Square Error : ',root_mean_squared_error(Y_test,Y_pred))
 print('R Square Error : ',r2_score(Y_test,Y_pred))
 
-#------------- KNN Regression
+# Results - (MSE : 0.3637, MAE : 0.468, RMSE : 0.6031, R-square Error : 0.6356)
+
+#########################------------- KNN Regression
 
 X_train,X_test,Y_train,Y_test = train_test_split(X,Y,test_size=0.2)
 getmodel = KNeighborsRegressor(n_neighbors=50).fit(X_train,Y_train)
@@ -222,7 +274,9 @@ print('Mean Absolute Error : ',mean_absolute_error(Y_test,Y_pred))
 print('Root Mean Square Error : ',root_mean_squared_error(Y_test,Y_pred))
 print('R Square Error : ',r2_score(Y_test,Y_pred))
 
-#------------- Decision Tree Regression
+# Results - (MSE : 0.2255, MAE : 0.361, RMSE : 0.4749, R-square Error : 0.776)
+
+#########################------------- Decision Tree Regression
 
 X_train,X_test,Y_train,Y_test = train_test_split(X,Y,test_size=0.2)
 getmodel = DecisionTreeRegressor().fit(X_train,Y_train)
@@ -232,7 +286,9 @@ print('Mean Absolute Error : ',mean_absolute_error(Y_test,Y_pred))
 print('Root Mean Square Error : ',root_mean_squared_error(Y_test,Y_pred))
 print('R Square Error : ',r2_score(Y_test,Y_pred))
 
-#------------- Random Forest Regression
+# Results - (MSE : 0.2632, MAE : 0.3765, RMSE : 0.5131, R-square Error : 0.7353)
+
+#########################------------- Random Forest Regression
 
 X_train,X_test,Y_train,Y_test = train_test_split(X,Y,test_size=0.2)
 getmodel = RandomForestRegressor().fit(X_train,Y_train)
@@ -242,7 +298,9 @@ print('Mean Absolute Error : ',mean_absolute_error(Y_test,Y_pred))
 print('Root Mean Square Error : ',root_mean_squared_error(Y_test,Y_pred))
 print('R Square Error : ',r2_score(Y_test,Y_pred))
 
-#------------- Gradient Boosting Regression
+# Results - (MSE : 0.2413, MAE : 0.3529, RMSE : 0.4912, R-square Error : 0.759)
+
+#########################------------- Gradient Boosting Regression
 
 X_train,X_test,Y_train,Y_test = train_test_split(X,Y,test_size=0.2)
 getmodel = GradientBoostingRegressor(learning_rate=0.8).fit(X_train,Y_train)
@@ -252,7 +310,9 @@ print('Mean Absolute Error : ',mean_absolute_error(Y_test,Y_pred))
 print('Root Mean Square Error : ',root_mean_squared_error(Y_test,Y_pred))
 print('R Square Error : ',r2_score(Y_test,Y_pred))
 
-#------------- Extreme Gradient Boosting Regression
+# Results - (MSE : 0.2786, MAE : 0.394, RMSE : 0.5279, R-square Error : 0.7244)
+
+#########################------------- Extreme Gradient Boosting Regression
 
 X_train,X_test,Y_train,Y_test = train_test_split(X,Y,test_size=0.2)
 getmodel = xgb.XGBRFRegressor().fit(X_train,Y_train)
@@ -262,6 +322,32 @@ print('Mean Absolute Error : ',mean_absolute_error(Y_test,Y_pred))
 print('Root Mean Square Error : ',root_mean_squared_error(Y_test,Y_pred))
 print('R Square Error : ',r2_score(Y_test,Y_pred))
 
-*****************************************************************************************************************************************************************
+# Results - (MSE : 0.3059, MAE : 0.4188, RMSE : 0.5531, R-square Error : 0.6944)
 
-Selected Regressor : Random Forest Regressor (MSE : 9298.31, MAE : 70.18, RMSE : 96.43, R-square Error : 0.74)
+######################### Selected Regressor : Random Forest Regressor (MSE : 0.2413, MAE : 0.3529, RMSE : 0.4912, R-square Error : 0.759)
+
+###############################################################################################################################
+##
+## Step 9: Inverse Transforming to scale the values to original values
+##
+###############################################################################################################################
+
+copydf = pd.DataFrame(scaler.inverse_transform(testdf))
+copydf.columns= ['item_date', 'thickness', 'delivery date', 'selling_price']
+
+###############################################################################################################################
+##
+## Step 10: Dumping the trained model into a binary file using Pickling
+##
+###############################################################################################################################
+
+X = copydf.iloc[:,:3]
+Y = copydf['selling_price')
+
+X_train,X_test,Y_train,Y_test = train_test_split(X,Y,test_size=0.2)
+getmodel = RandomForestRegressor().fit(X_train,Y_train)
+
+with open('trained_model_regress','wb') as f:
+	pickle.dump(getmodel,f)
+
+*****************************************************************************************************************************************************************
