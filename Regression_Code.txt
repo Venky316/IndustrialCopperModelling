@@ -164,43 +164,30 @@ copydf['material_ref'] = getlabel.fit_transform(copydf['material_ref'])
 
 ###############################################################################################################################
 ##
-## Step 4: Perform Exploratory Data Analysis (EDA) on the data to identify and treat outliers
-##
-###############################################################################################################################
-
-copydf = copydf.iloc[:,[0,1,2,3,4,5,6,7,8,9,10,12,11]]
-
-for i in copydf[copydf['item type'] < 2].index:
-    copydf.drop(i,inplace=True)
-
-q3 = copydf['quantity tons'].quantile(0.75)
-q1 = copydf['quantity tons'].quantile(0.25)
-iqr = q3 - q1
-
-minval = q1 - (1.5 * iqr)
-maxval = q3 + (1.5 * iqr)
-
-for i in copydf[copydf['quantity tons'] < minval].index:
-    copydf.loc[i,'quantity tons'] = minval
-
-for i in copydf[copydf['quantity tons'] > maxval].index:
-    copydf.loc[i,'quantity tons'] = maxval
-
-###############################################################################################################################
-##
-## Step 5: Select the best features for the Model using correlation coefficients and removing other columns
+## Step 4: Select the best features for the Model using correlation coefficients and removing other columns
 ##
 ## 	   Selected Features : item_date(52.6%), thickness(35.9%), delivery date(43.4%)
 ##
 ###############################################################################################################################
 
-copydf.drop(['quantity tons','customer','country','item type','product_ref','material_ref','status','application','width'],axis=1,inplace=True)
+copydf = copydf.iloc[:,[0,1,2,3,4,5,6,7,8,9,10,12,11]]
 
-###############################################################################################################################
-##
-## Step 6: Perform Exploratory Data Analysis (EDA) on the data to identify and treat outliers
-##
-###############################################################################################################################
+X = copydf.iloc[:,:12]
+Y = copydf['selling_price']
+
+model = RandomForestRegressor()
+rfe = RFE(model,step=1)
+rfe.fit(X,Y)
+
+print('No. of Features : ',rfe.n_features_)
+print('Selected Features : ',rfe.support_)
+print('Feature Ranking : ',rfe.ranking_)
+
+## Results : No. of Features :  6
+##	     Selected Features :  [ True  True  True False  True False False False False  True  True False]
+##	     Feature Ranking :  [1 1 1 3 1 7 6 5 4 1 1 2]
+
+copydf.drop(['quantity tons','customer','country','item type','product_ref','material_ref','status','application','width'],axis=1,inplace=True)
 
 for i in copydf[copydf['selling_price'] < 400].index:
     copydf.drop(i,inplace=True)
@@ -208,16 +195,11 @@ for i in copydf[copydf['selling_price'] < 400].index:
 for i in copydf[copydf['selling_price'] > 1365].index:
     copydf.drop(i,inplace=True)
 
-copydf.drop([105485,36532,43189,12343,154521,105421,3231,2515,2523,3233,3229,58],inplace=True)
-
-copydf.columns= ['item_date', 'thickness', 'delivery date', 'selling_price']
-
-X = copydf.iloc[:,:3]
-Y = copydf['selling_price']
+copydf.drop([105485,36532,43189,12343,154521,105421,3231,2515,2523,3233,3229,58,105485,36532,43189,12343,154521,105421,3231,2515,2523,3233,3229,58],inplace=True)
 
 ###############################################################################################################################
 ##
-## Step 7: Scaling Values using Standard Scaler
+## Step 5: Scaling Values using Standard Scaler
 ##
 ###############################################################################################################################
 
@@ -231,7 +213,7 @@ Y = copydf['selling_price']
 
 ###############################################################################################################################
 ##
-## Step 8: Testing on Various ML Models
+## Step 6: Testing on Various ML Models
 ##
 ###############################################################################################################################
 
@@ -328,7 +310,7 @@ print('R Square Error : ',r2_score(Y_test,Y_pred))
 
 ###############################################################################################################################
 ##
-## Step 9: Inverse Transforming to scale the values to original values
+## Step 7: Inverse Transforming to scale the values to original values
 ##
 ###############################################################################################################################
 
@@ -337,7 +319,7 @@ copydf.columns= ['item_date', 'thickness', 'delivery date', 'selling_price']
 
 ###############################################################################################################################
 ##
-## Step 10: Dumping the trained model into a binary file using Pickling
+## Step 8: Dumping the trained model into a binary file using Pickling
 ##
 ###############################################################################################################################
 
@@ -350,4 +332,4 @@ getmodel = RandomForestRegressor().fit(X_train,Y_train)
 with open('trained_model_regress','wb') as f:
 	pickle.dump(getmodel,f)
 
-*****************************************************************************************************************************************************************
+##*****************************************************************************************************************************************************************

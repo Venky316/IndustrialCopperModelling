@@ -25,7 +25,7 @@ if(selmodel == 'Regression (predicts selling price)'):
     with col1:
         getitemdate = st.date_input('Input Date',value='default_value_today',min_value=datetime.date(2020,7,2),max_value=datetime.date(2024,8,13),format='YYYY-MM-DD',label_visibility='visible')
     with col2:
-        getthick = st.number_input('Thickness',min_value=0)
+        getthick = st.number_input('Thickness',min_value=0,max_value=5)
     with col3:
         getdeliverydate = st.date_input('Delivery Date',value='default_value_today',min_value=datetime.date(2020,1,1),max_value=datetime.date(2024,8,13),format='YYYY-MM-DD',label_visibility='visible')
     st.markdown(' ')
